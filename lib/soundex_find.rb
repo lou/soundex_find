@@ -42,39 +42,39 @@ module WGJ #:nodoc:
       
       def soundex_find(*args)
         options = args.extract_options!
-        
         sdx = (self.sdx_options[:start] ? '' : '%') +
                 self.soundex(options.delete(:soundex)) +
                 (self.sdx_options[:end] ? '' : '%')
-        
+        lang = options[:soundex_lang] ? options[:soundex_lang].to_s.downcase : 'en'
+        options.delete(:soundex_lang)
         #TODO: currently supports only one column
-        with_scope :find => { :conditions => ["#{self.sdx_columns[0]}_soundex LIKE ?", sdx] } do
+        with_scope :find => { :conditions => ["#{self.sdx_columns[0]}_soundex_#{lang} LIKE ?", sdx] } do
           items = self.find(args.first, options) 
         end
       end
-      
+            
       #TODO: Use resource file, and support more languages, or alternate charsets.
-      SoundexChars = 'BPFVCSKGJQXZDTLMNR'
-      SoundexNums  = '111122222222334556'
-      SoundexCharsEx = '^' + SoundexChars
+      SoundexChars = { :en => 'BPFVCSKGJQXZDTLMNR', :fr => 'BPCKQDTLMNRGJSXZFV' }
+      SoundexNums  = { :en => '111122222222334556', :fr => '112223345567788899' }
       SoundexCharsDel = '^A-Z'
     
       # desc: http://en.wikipedia.org/wiki/Soundex
       # adapted from Alexander Ermolaev
       # http://snippets.dzone.com/posts/show/4530
-      def soundex(string)
+      def soundex(string, lang = :en)
+        soundex_chars_ex = '^' + SoundexChars[lang]
         str = string.upcase.delete(SoundexCharsDel).squeeze
     
         limit = self.sdx_options[:limit]
         
         if self.sdx_options[:strict]
           str[0 .. 0] + str[1 .. -1].
-              delete(SoundexCharsEx).
-              tr(SoundexChars, SoundexNums)[0 .. (limit ? (limit-1) : -1)] rescue ''
+              delete(soundex_chars_ex).
+              tr(SoundexChars[lang], SoundexNums[lang])[0 .. (limit ? (limit-1) : -1)] rescue ''
         else
           str[0 .. -1].
-              delete(SoundexCharsEx).
-              tr(SoundexChars, SoundexNums)[0 .. (limit ? (limit) : -1)] rescue ''
+              delete(soundex_chars_ex).
+              tr(SoundexChars[lang], SoundexNums[lang])[0 .. (limit ? (limit) : -1)] rescue ''
         end
       end
       
@@ -85,7 +85,8 @@ module WGJ #:nodoc:
 
       def update_soundex
         self.class.sdx_columns.each {|c|
-          self.send("#{c}_soundex=", self.class.soundex(self.send(c)))
+          self.send("#{c}_soundex_en=", self.class.soundex(self.send(c), :en))
+          self.send("#{c}_soundex_fr=", self.class.soundex(self.send(c), :fr))
         }
       end
       
