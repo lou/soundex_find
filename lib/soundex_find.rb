@@ -42,13 +42,13 @@ module WGJ #:nodoc:
       
       def soundex_find(*args)
         options = args.extract_options!
-        sdx = (self.sdx_options[:start] ? '' : '%') +
-                self.soundex(options.delete(:soundex)) +
-                (self.sdx_options[:end] ? '' : '%')
-        lang = options[:soundex_lang] ? options[:soundex_lang].to_s.downcase : 'en'
+        lang = options[:soundex_lang] ? options[:soundex_lang] : :en
         options.delete(:soundex_lang)
+        sdx = (self.sdx_options[:start] ? '' : '%') +
+                self.soundex(options.delete(:soundex), lang.to_sym) +
+                (self.sdx_options[:end] ? '' : '%')
         #TODO: currently supports only one column
-        with_scope :find => { :conditions => ["#{self.sdx_columns[0]}_soundex_#{lang} LIKE ?", sdx] } do
+        with_scope :find => { :conditions => ["#{self.sdx_columns[0]}_soundex_#{lang.to_s.downcase} LIKE ?", sdx] } do
           items = self.find(args.first, options) 
         end
       end
@@ -93,6 +93,3 @@ module WGJ #:nodoc:
     end
   end
 end
-
-
-
